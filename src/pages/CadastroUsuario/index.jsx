@@ -7,15 +7,22 @@ function CadastroUsuario() {
     {
       id: '1',
       name: 'Carlos',
-      age: 33,
-      email: 'carlos@email.com,'
+      pwd: '123',
+      email: 'carlos@email.com'
 
     },
     {
       id: '2',
       name: 'Marcos',
-      age: 25,
-      email: 'mar@email.com,'
+      pwd: '1234',
+      email: 'marcos@email.com'
+
+    },
+    {
+      id: '3',
+      name: 'Julio',
+      pwd: '12345',
+      email: 'julio@email.com'
 
     }
   ]
@@ -23,20 +30,25 @@ function CadastroUsuario() {
   return (
     <div className='container'>
       <form>
-        <h1>Cadastro de Usuários</h1>
-        <input name='Nome' type='text' />
-        <input name='idade' type='number' />
-        <input name='email' type='email' />
+        <h1 className="titulo-principal">Cadastro de Usuários</h1>
+        <h1 className="subtitulos">Nome</h1>
+        <input placeholder='Ex: Wesley' name='Nome' type='text' />
+
+        <h1 className="subtitulos">Senha</h1>
+        <input placeholder='Ex: 12345' name='senha' type='type' />
+
+        <h1 className="subtitulos">Email</h1>
+        <input placeholder='Ex: wesley@gmail.com' name='email' type='email' />
         <button type='button'>Cadastrar</button>
       </form>
 
 
       {users.map((user) => (
-        <div key={user.id}>
+        <div key={user.id} className='card'>
           <div>
-            <p>Nome:{user.name}</p>
-            <p>Idade: {user.age}</p>
-            <p>Email: {user.email}</p>
+            <p>Nome: <span>{user.name}</span></p>
+            <p>Senha: <span>{user.pwd}</span></p>
+            <p>Email: <span>{user.email}</span></p>
           </div>
           <button>
             <img src={Trash} />
@@ -49,4 +61,4 @@ function CadastroUsuario() {
   )
 }
 
-export default CadastroUsuario
+export default CadastroUsuario;
