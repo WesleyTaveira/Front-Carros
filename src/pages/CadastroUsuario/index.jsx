@@ -1,60 +1,77 @@
+import { useEffect, useState, useRef } from 'react'
 import './style.css'
 import Trash from '@mui/icons-material/Delete'
+import api from '../../services/api'
+
 
 function CadastroUsuario() {
 
-  const users = [
-    {
-      id: '1',
-      name: 'Carlos',
-      pwd: '123',
-      email: 'carlos@email.com'
+  const [users, setUsers] = useState([])
 
-    },
-    {
-      id: '2',
-      name: 'Marcos',
-      pwd: '1234',
-      email: 'marcos@email.com'
+  const inputNome = useRef()
+  const inputSenha = useRef()
+  const inputEmail = useRef()
 
-    },
-    {
-      id: '3',
-      name: 'Julio',
-      pwd: '12345',
-      email: 'julio@email.com'
+  async function getUsers(){
+    const usersApi = await api.get('/usuarios')
 
-    }
-  ]
+    setUsers(usersApi.data.data)
+  }
+
+  async function createUsers(){
+    await api.post('/usuarios', {
+      nome: inputNome.current.value,
+      senha: inputSenha.current.value,
+      email: inputEmail.current.value
+    })
+
+    getUsers()
+   
+  }
+
+  async function deleteUsers(id){
+    await api.delete(`/usuarios/${id}`)
+
+    getUsers()
+  }
+
+  useEffect(() => {
+    getUsers()
+  }, [])
 
   return (
     <div className='container'>
       <form>
         <h1 className="titulo-principal">Cadastro de Usuários</h1>
         <h1 className="subtitulos">Nome</h1>
-        <input placeholder='Ex: Wesley' name='Nome' type='text' />
+        <input placeholder='Ex: Wesley' name='nome' type='text' ref={inputNome}/>
 
         <h1 className="subtitulos">Senha</h1>
-        <input placeholder='Ex: 12345' name='senha' type='type' />
+        <input placeholder='Digite a sua senha' name='senha' type='password' ref={inputSenha}/>
 
         <h1 className="subtitulos">Email</h1>
-        <input placeholder='Ex: wesley@gmail.com' name='email' type='email' />
-        <button type='button'>Cadastrar</button>
+        <input placeholder='Ex: wesley@gmail.com' name='email' type='email' ref={inputEmail}/>
+        <button type='button' onClick={createUsers}>Cadastrar</button>
       </form>
 
 
       {users.map((user) => (
         <div key={user.id} className='card'>
           <div>
-            <p>Nome: <span>{user.name}</span></p>
-            <p>Senha: <span>{user.pwd}</span></p>
+            <p>Id: <span>{user.id}</span></p>
+            <p>Nome: <span>{user.nome}</span></p>
             <p>Email: <span>{user.email}</span></p>
           </div>
-          <button>
-            <img src={Trash} />
+          <button onClick={() => deleteUsers(user.id)}>
+            <Trash /> 
           </button>
         </div>
       ))}
+
+      <div className ='login'>
+        <h1 className="subtitulos">Tem uma conta?</h1>
+        <button className="conecte-se" type='button'>Conecte-se</button>
+      </div>
 
 
     </div>
