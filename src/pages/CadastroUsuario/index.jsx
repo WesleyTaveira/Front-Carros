@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
-import './style.css'
+import styles from './style.module.css'
 import Trash from '@mui/icons-material/Delete'
 import api from '../../services/api'
+import { Link } from 'react-router-dom'
 
 
 function CadastroUsuario() {
@@ -12,13 +13,13 @@ function CadastroUsuario() {
   const inputSenha = useRef()
   const inputEmail = useRef()
 
-  async function getUsers(){
+  async function getUsers() {
     const usersApi = await api.get('/usuarios')
 
     setUsers(usersApi.data.data)
   }
 
-  async function createUsers(){
+  async function createUsers() {
     await api.post('/usuarios', {
       nome: inputNome.current.value,
       senha: inputSenha.current.value,
@@ -26,10 +27,10 @@ function CadastroUsuario() {
     })
 
     getUsers()
-   
+
   }
 
-  async function deleteUsers(id){
+  async function deleteUsers(id) {
     await api.delete(`/usuarios/${id}`)
 
     getUsers()
@@ -40,41 +41,46 @@ function CadastroUsuario() {
   }, [])
 
   return (
-    <div className='container'>
-      <form>
-        <h1 className="titulo-principal">Cadastro de Usuários</h1>
-        <h1 className="subtitulos">Nome</h1>
-        <input placeholder='Ex: Wesley' name='nome' type='text' ref={inputNome}/>
+    <div className={styles.cadastroPageWrapper}>
+      <div className={styles.container}>
+        <form>
+          <h1 className={styles['titulo-principal']}>Cadastro de Usuários</h1>
+          <h1 className={styles.subtitulos}>Nome</h1>
+          <input placeholder='Ex: Wesley' name='nome' type='text' ref={inputNome} />
 
-        <h1 className="subtitulos">Senha</h1>
-        <input placeholder='Digite a sua senha' name='senha' type='password' ref={inputSenha}/>
+          <h1 className={styles.subtitulos}>Senha</h1>
+          <input placeholder='Digite a sua senha' name='senha' type='password' ref={inputSenha} />
 
-        <h1 className="subtitulos">Email</h1>
-        <input placeholder='Ex: wesley@gmail.com' name='email' type='email' ref={inputEmail}/>
-        <button type='button' onClick={createUsers}>Cadastrar</button>
-      </form>
+          <h1 className={styles.subtitulos}>Email</h1>
+          <input placeholder='Ex: wesley@gmail.com' name='email' type='email' ref={inputEmail} />
+          <button type='button' onClick={createUsers}>Cadastrar</button>
+        </form>
 
 
-      {users.map((user) => (
-        <div key={user.id} className='card'>
-          <div>
-            <p>Id: <span>{user.id}</span></p>
-            <p>Nome: <span>{user.nome}</span></p>
-            <p>Email: <span>{user.email}</span></p>
+        {users.map((user) => (
+          <div key={user.id} className={styles.card}>
+            <div>
+              <p>Id: <span>{user.id}</span></p>
+              <p>Nome: <span>{user.nome}</span></p>
+              <p>Email: <span>{user.email}</span></p>
+            </div>
+            <button onClick={() => deleteUsers(user.id)}>
+              <Trash />
+            </button>
           </div>
-          <button onClick={() => deleteUsers(user.id)}>
-            <Trash /> 
-          </button>
-        </div>
-      ))}
+        ))}
 
-      <div className ='login'>
-        <h1 className="subtitulos">Tem uma conta?</h1>
-        <button className="conecte-se" type='button'>Conecte-se</button>
+        <div className={styles.login}>
+          <h1 className={styles.subtitulos}>Tem uma conta?</h1>
+          <nav>
+            <Link to="/" className={styles['conecte-se']}> Conecte-se </Link>
+          </nav>
+        </div>
       </div>
 
-
     </div>
+
+
   )
 }
 
