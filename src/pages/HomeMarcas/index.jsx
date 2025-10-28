@@ -1,17 +1,11 @@
 import styles from './style.module.css'
 import { api } from '../../services/api'
 import { useNavigate, Link} from 'react-router-dom'
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-function HomeCarros() {
+function HomeMarcas() {
     const navigate = useNavigate();
     const [msg, setMsg] = useState('');
-
-    useEffect(() => {
-        api.get('/home').then(res => setMsg(JSON.stringify(res.data))).catch(err => {
-          console.error(err);
-        });
-      }, []);
     
       const handleLogout = () => {
         localStorage.removeItem('token');
@@ -22,14 +16,14 @@ function HomeCarros() {
 
     return(
         <div>
-            <h1>Home Carros</h1>
+            <h1>Home Marcas</h1>
             <pre>{msg}</pre>
             <button onClick={handleLogout}>Logout</button>
             <nav>
-                <Link to="/carros/marcas" > Lista de Marcas</Link>
+                <Link to="/carros" > Lista de Carros</Link>
             </nav>
         </div>
     )
 }
 
-export default HomeCarros;
+export default HomeMarcas;
