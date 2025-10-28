@@ -46,14 +46,14 @@ function CadastroUsuario() {
         <form>
           <h1 className={styles['titulo-principal']}>Cadastro de Usuários</h1>
           <h1 className={styles.subtitulos}>Nome</h1>
-          <input placeholder='Ex: Wesley' name='nome' type='text' ref={inputNome} />
+          <input placeholder='Ex: Wesley' name='nome' type='text' ref={inputNome} required/>
 
           <h1 className={styles.subtitulos}>Senha</h1>
-          <input placeholder='Digite a sua senha' name='senha' type='password' ref={inputSenha} />
+          <input placeholder='Digite a sua senha' name='senha' type='password' ref={inputSenha} required/>
 
           <h1 className={styles.subtitulos}>Email</h1>
-          <input placeholder='Ex: wesley@gmail.com' name='email' type='email' ref={inputEmail} />
-          <button type='button' onClick={createUsers}>Cadastrar</button>
+          <input placeholder='Ex: wesley@gmail.com' name='email' type='email' ref={inputEmail} required/>
+          <button type='submit' onClick={createUsers}>Cadastrar</button>
         </form>
 
 

@@ -6,6 +6,7 @@ import Cadastro from './pages/CadastroUsuario'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Carros from './pages/HomeCarros'
 import { PrivateRoute } from './components/privateRoute'
+import Marcas from './pages/HomeMarcas'
 
 const router = createBrowserRouter([{
   path: "/",
@@ -22,7 +23,13 @@ const router = createBrowserRouter([{
       <Carros />
     </PrivateRoute>
   )
-}
+},
+{
+  path: "/carros/marcas",
+  element: (<PrivateRoute>
+      < Marcas/>
+    </PrivateRoute>)
+},
 ])
 
 createRoot(document.getElementById('root')).render(

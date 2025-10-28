@@ -20,7 +20,7 @@ function Login() {
           const token = res.data.access_token;
           localStorage.setItem('token', token);
           localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
-          navigate('/home');
+          navigate('/carros');
         } catch (err) {
           console.error(err);
           setErro('Email ou senha incorretos');
