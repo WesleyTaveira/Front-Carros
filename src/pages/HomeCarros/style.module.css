@@ -172,6 +172,10 @@ body {
 .btn-icon:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--cor-sombra-foco); }
 .btn-icon svg { font-size: 24px; }
 
+.btn-list {
+  margin-right: 15px;
+}
+
 .action-bar {
   display: flex;
   align-items: center; 

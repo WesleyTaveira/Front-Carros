@@ -11,6 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import TrashIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/EditRounded';
 
 
 // --- Componente Principal ---
@@ -19,7 +20,15 @@ function HomeCarros() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false); // Para o modal
+  const [isModalCreateOpen, setIsModalCreateOpen] = useState(false); // Para o modal
+  const [isModalUpdateOpen, setIsModalUpdateOpen] = useState(false);
+  const [editingCar, setEditingCar] = useState(null);
+  const [formData, setFormData] = useState({
+    marca: '', 
+    modelo: '', 
+    ano: '', 
+    placa: '', 
+  });
   const navigate = useNavigate();
 
   const inputPlaca = useRef()
@@ -43,6 +52,17 @@ function HomeCarros() {
   
       getCarros()
   
+  }
+
+  async function updateCarros(id) {
+      await api.patch(`/carros/${id}`, {
+        placa: inputPlaca.current.value,
+        ano: inputAno.current.value,
+        modelo: inputModelo.current.value,
+        marca: inputMarca.current.value
+      })
+  
+      getCarros()
   }
 
   async function deleteCarros(id) {
@@ -73,8 +93,65 @@ function HomeCarros() {
     if (!carroEncontrado && searchTerm.trim()) setError("Carro não encontrado para o ID especificado."); else setError(null);
   };
 
-  const handleOpenModal = () => setIsModalOpen(true); // Abre o modal
-  const handleCloseModal = () => setIsModalOpen(false); // Fecha o modal
+  const handleEditClick = (carroParaEditar) => {
+    console.log("Carro recebido para editar:", carroParaEditar);
+    setEditingCar(carroParaEditar);
+
+    
+    setFormData({
+      marca: carroParaEditar.marca.id || '', 
+      modelo: carroParaEditar.modelo || '',
+      ano: carroParaEditar.ano || '',
+      placa: carroParaEditar.placa || '',
+    });
+
+    setIsModalUpdateOpen(true);
+  };
+
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleFormSubmit = async (event) => {
+     event.preventDefault();
+     
+     // Verifica se estamos realmente no modo de edição
+     if (!editingCar) {
+       console.error("Erro: Tentativa de submeter formulário sem um carro em edição.");
+       return; 
+     }
+
+     console.log(`Atualizando carro com ID: ${editingCar.id}`);
+     console.log("Novos dados:", formData);
+     
+     try {
+       // ---- SUBSTITUA PELA SUA CHAMADA DE API PUT ou PATCH ----
+       await api.patch(`/carros/${editingCar.id}`, formData); 
+       await new Promise(resolve => setTimeout(resolve, 500)); // Simula API
+       console.log("Carro atualizado com sucesso!");
+       // ---- FIM DA SUBSTITUIÇÃO ----
+       
+       getCarros();
+       handleCloseModalUpdate(); 
+     } catch (err) {
+       console.error("Erro ao atualizar carro:", err);
+       
+     }
+  };
+
+  const handleOpenModalCreate = () => setIsModalCreateOpen(true); // Abre o modal
+  const handleCloseModalCreate = () => setIsModalCreateOpen(false); // Fecha o modal
+
+  const handleOpenModalUpdate = () => setIsModalUpdateOpen(true); // Abre o modal
+  const handleCloseModalUpdate = () => {
+    setIsModalUpdateOpen(false);
+    setEditingCar(null);
+    setFormData({ marca: '', modelo: '', ano: '', placa: '' });
+  } 
 
   /*const handleAddCarro = (event) => {
      event.preventDefault();
@@ -109,9 +186,14 @@ function HomeCarros() {
             <p><strong>Modelo:</strong> <span>{carro.modelo}</span></p>
             <p><strong>Placa:</strong> <span>{carro.placa}</span></p>
           </div>
-          <button >
+          <div>
+            <button className={styles['btn-list']} onClick={() => handleEditClick(carro)}>
+              <EditIcon />
+            </button>
+            <button >
               <TrashIcon onClick={() => deleteCarros(carro.id)}/>
-          </button>
+            </button>
+          </div>
         </div>
         ))}
       </div>
@@ -153,7 +235,7 @@ function HomeCarros() {
           <button type="submit" className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}>
                Buscar
             </button>
-            <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleOpenModal}>
+            <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleOpenModalCreate}>
             <AddIcon /> Novo Veículo
             </button>
           </div>
@@ -168,12 +250,12 @@ function HomeCarros() {
       </main>
 
       {/* MODAL DE NOVO VEÍCULO (Ajuste o conteúdo do seu modal aqui) */}
-      {isModalOpen && (
-         <div className={styles["modal-overlay"]} onClick={handleCloseModal}>
+      {isModalCreateOpen && (
+         <div className={styles["modal-overlay"]} onClick={handleCloseModalCreate}>
           <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
             <div className={styles["modal-header"]}>
               <h2>Novo Veículo</h2>
-              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModal}>
+              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModalCreate}>
                 <CloseIcon />
               </button>
             </div>
@@ -201,7 +283,7 @@ function HomeCarros() {
               </div>
 
               <div className={styles["modal-actions"]}>
-                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModal} >
+                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalCreate} >
                   Cancelar
                 </button>
                 <button type="submit" onClick={createCarros} className={`${styles.btn} ${styles['btn-primary']}`}>
@@ -212,6 +294,53 @@ function HomeCarros() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE ATUALIZAR VEÍCULO (Ajuste o conteúdo do seu modal aqui) */}
+      {isModalUpdateOpen && (
+         <div className={styles["modal-overlay"]} onClick={handleCloseModalUpdate}>
+          <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
+            <div className={styles["modal-header"]}>
+              <h2>Atualizar Veículo</h2>
+              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModalUpdate}>
+                <CloseIcon />
+              </button>
+            </div>
+            <p className={styles["modal-subtitle"]}>Atualize os dados do veículo</p>
+            <form className={styles["modal-form"]} onSubmit={handleFormSubmit} >
+              <div className={styles['form-row']}>
+                  <div className={styles['form-group']}>
+                      <label htmlFor="marca" className={styles['form-label']}>Marca</label>
+                      <input type="text" id="marca" name="marca" placeholder="Id da Marca" value={formData.marca} onChange={handleFormChange} className={styles['form-input']} />
+                  </div>
+                   <div className={styles['form-group']}>
+                      <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
+                      <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" value={formData.modelo} onChange={handleFormChange} className={styles['form-input']} />
+                  </div>
+              </div>
+              <div className={styles['form-row']}>
+                <div className={styles['form-group']}>
+                  <label htmlFor="ano" className={styles['form-label']}>Ano</label>
+                  <input type="number" id="ano" name="ano" placeholder="2025" value={formData.ano} onChange={handleFormChange} className={styles['form-input']} />
+                </div>
+                 <div className={styles['form-group']}>
+                  <label htmlFor="placa" className={styles['form-label']}>Placa</label>
+                  <input type="text" id="placa" name="placa" placeholder="ABC1234" value={formData.placa} onChange={handleFormChange} className={styles['form-input']} />
+                </div>
+              </div>
+
+              <div className={styles["modal-actions"]}>
+                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalUpdate} >
+                  Cancelar
+                </button>
+                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
+                  Atualizar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
