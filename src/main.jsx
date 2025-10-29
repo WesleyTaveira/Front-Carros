@@ -18,18 +18,14 @@ const router = createBrowserRouter([{
 },
 {
   path: "/carros",
-  element: (
-    <PrivateRoute>
-      <Carros />
-    </PrivateRoute>
-  )
+  element: <Carros />
 },
 {
   path: "/carros/marcas",
   element: (<PrivateRoute>
-      < Marcas/>
+    < Marcas/>
     </PrivateRoute>)
-},
+}
 ])
 
 createRoot(document.getElementById('root')).render(

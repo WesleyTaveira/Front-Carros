@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import styles from './style.module.css'
-import Trash from '@mui/icons-material/Delete'
+import Trash from '@mui/icons-material/DeleteRounded'
 import api from '../../services/api'
 import { Link } from 'react-router-dom'
 
