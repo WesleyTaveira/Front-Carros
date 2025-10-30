@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styles from './style.module.css'; // Usa CSS Modules
+import styles from './style.module.css';
 import api from '../../services/api';
 
 // --- Ícones ---
@@ -23,11 +23,12 @@ function HomeCarros() {
   const [isModalCreateOpen, setIsModalCreateOpen] = useState(false); // Para o modal
   const [isModalUpdateOpen, setIsModalUpdateOpen] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
+
   const [formData, setFormData] = useState({
-    marca: '', 
-    modelo: '', 
-    ano: '', 
-    placa: '', 
+    marca: '',
+    modelo: '',
+    ano: '',
+    placa: '',
   });
   const navigate = useNavigate();
 
@@ -42,64 +43,79 @@ function HomeCarros() {
     setCarros(carrosApi.data.data)
   }
 
-  async function createCarros() {
-      await api.post('/carros', {
-        placa: inputPlaca.current.value,
-        ano: inputAno.current.value,
-        modelo: inputModelo.current.value,
-        marca: inputMarca.current.value
-      })
-  
-      getCarros()
-  
-  }
 
-  async function updateCarros(id) {
-      await api.patch(`/carros/${id}`, {
-        placa: inputPlaca.current.value,
-        ano: inputAno.current.value,
-        modelo: inputModelo.current.value,
-        marca: inputMarca.current.value
-      })
-  
-      getCarros()
-  }
 
   async function deleteCarros(id) {
-      await api.delete(`/carros/${id}`)
-  
-      getCarros()
+    await api.delete(`/carros/${id}`)
+
+    getCarros()
   }
 
   useEffect(() => {
     const fetchCarros = async () => {
-      setIsLoading(true); setError(null);
+      setIsLoading(true);
+      setError(null);
       console.log("Buscando todos os carros...");
-      await new Promise(resolve => setTimeout(resolve, 500));
-      getCarros();
-      setIsLoading(false);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Seu delay
+
+      try {
+        await getCarros();
+      } catch (e) {
+        console.error("Falha ao buscar carros:", e);
+        setError("Não foi possível carregar os veículos.");
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchCarros();
-  }, []);
+  }, []); // O array vazio está correto, para rodar só uma vez.
 
   const handleSearchChange = (event) => setSearchTerm(event.target.value);
+
   const handleSearchSubmit = async (event) => {
+    // Previne o comportamento padrão do formulário (recarregar a página)
     event.preventDefault();
-    setIsLoading(true); setError(null);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const carroEncontrado = carros.find(c => c.id === searchTerm);
-    setCarros(carroEncontrado ? [carroEncontrado] : []);
-    setIsLoading(false);
-    if (!carroEncontrado && searchTerm.trim()) setError("Carro não encontrado para o ID especificado."); else setError(null);
+
+    // Se a barra de busca estiver vazia, recarrega todos os carros
+    if (!searchTerm.trim()) {
+      console.log("Busca vazia, recarregando todos os veículos...");
+      await getCarros();
+      return;
+    }
+
+    // Inicia o estado de carregamento
+    setIsLoading(true);
+    setError(null);
+    console.log(`Buscando veículo com ID: ${searchTerm}`);
+
+    try {
+      const response = await api.get(`/carros/${searchTerm}`);
+
+      console.log("Resposta da API (busca por ID):", response);
+
+      if (response.data && response.data.data) {
+        setCarros([response.data.data]); // Coloca o carro encontrado (em um array) no estado
+      } else {
+        setCarros([]);
+        setError("Veículo não encontrado para o ID especificado.");
+      }
+
+    } catch (e) {
+      console.error("Falha ao buscar veículo por ID:", e);
+      setCarros([]); // Limpa a lista de carros
+      setError("Veículo não encontrado ou falha na busca.");
+    } finally {
+      setIsLoading(false); // Para o 'loading' em qualquer cenário (sucesso ou erro)
+    }
   };
 
   const handleEditClick = (carroParaEditar) => {
     console.log("Carro recebido para editar:", carroParaEditar);
     setEditingCar(carroParaEditar);
 
-    
+
     setFormData({
-      marca: carroParaEditar.marca.id || '', 
+      marca: carroParaEditar.marca.id || '',
       modelo: carroParaEditar.modelo || '',
       ano: carroParaEditar.ano || '',
       placa: carroParaEditar.placa || '',
@@ -116,32 +132,76 @@ function HomeCarros() {
     }));
   };
 
-  const handleFormSubmit = async (event) => {
-     event.preventDefault();
-     
-     // Verifica se estamos realmente no modo de edição
-     if (!editingCar) {
-       console.error("Erro: Tentativa de submeter formulário sem um carro em edição.");
-       return; 
-     }
+  const handleFormUpdateSubmit = async (event) => {
+    event.preventDefault();
 
-     console.log(`Atualizando carro com ID: ${editingCar.id}`);
-     console.log("Novos dados:", formData);
-     
-     try {
-       // ---- SUBSTITUA PELA SUA CHAMADA DE API PUT ou PATCH ----
-       await api.patch(`/carros/${editingCar.id}`, formData); 
-       await new Promise(resolve => setTimeout(resolve, 500)); // Simula API
-       console.log("Carro atualizado com sucesso!");
-       // ---- FIM DA SUBSTITUIÇÃO ----
-       
-       getCarros();
-       handleCloseModalUpdate(); 
-     } catch (err) {
-       console.error("Erro ao atualizar carro:", err);
-       
-     }
+    // Verifica se estamos realmente no modo de edição
+    if (!editingCar) {
+      console.error("Erro: Tentativa de submeter formulário sem um carro em edição.");
+      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
+      return;
+    }
+
+    console.log(`Atualizando carro com ID: ${editingCar.id}`);
+    console.log("Novos dados:", formData);
+
+    try {
+      await api.patch(`/carros/${editingCar.id}`, formData);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simula API
+      console.log("Carro atualizado com sucesso!");
+
+      getCarros();
+      handleCloseModalUpdate();
+    } catch (err) {
+      console.error("Erro ao atualizar carro:", err);
+      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
+
+    }
   };
+
+  async function handleFormCreateSubmit(event) {
+    event.preventDefault();
+
+    const placaDigitada = inputPlaca.current.value.trim().toUpperCase();
+
+    try {
+      await api.post("/carros", {
+        placa: placaDigitada,
+        ano: inputAno.current.value,
+        modelo: inputModelo.current.value,
+        marca: inputMarca.current.value
+      });
+
+      await getCarros(); // Recarrega a lista do banco
+
+      // Limpa e fecha o modal
+      inputPlaca.current.value = "";
+      inputAno.current.value = "";
+      inputModelo.current.value = "";
+      inputMarca.current.value = "";
+      handleCloseModalCreate();
+
+    } catch (err) {
+
+      console.log("!!! ERRO AO CRIAR CARRO (DEBUG) !!!");
+
+      // 'err.response' é o mais importante se for um erro de API (4xx, 5xx)
+      if (err.response) {
+        console.log("Dados do Erro (err.response):", err.response);
+        console.log("Status Code:", err.response.status);
+        console.log("Mensagem de Erro:", err.response.data);
+      } else {
+        // Se 'err.response' não existir, é outro tipo de erro (ex: rede)
+        console.log("Erro completo (sem err.response):", err);
+      }
+
+      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
+
+    }
+
+  }
+
+
 
   const handleOpenModalCreate = () => setIsModalCreateOpen(true); // Abre o modal
   const handleCloseModalCreate = () => setIsModalCreateOpen(false); // Fecha o modal
@@ -151,23 +211,13 @@ function HomeCarros() {
     setIsModalUpdateOpen(false);
     setEditingCar(null);
     setFormData({ marca: '', modelo: '', ano: '', placa: '' });
-  } 
-
-  /*const handleAddCarro = (event) => {
-     event.preventDefault();
-     console.log("Lógica para adicionar carro no backend.");
-     // Simulação de adição
-     const novoCarroId = (carros.length + 1).toString();
-     const novoCarro = { id: novoCarroId, marca: "Novo", modelo: "Veículo", placa: "XXX-0000" };
-     setCarros(prev => [...prev, novoCarro]);
-     handleCloseModal();
-  };*/
+  }
 
   const handleLogout = () => {
     navigate('/');
   };
   const handleNavigateToMarcas = () => {
-    navigate('/carros/marcas'); 
+    navigate('/carros/marcas');
   };
 
   const renderContent = () => {
@@ -180,21 +230,22 @@ function HomeCarros() {
       <div className={styles['car-list']}>
         {carros.map((carro) => (
           <div key={carro.id} className={styles['car-card']}>
-          <div className={styles['car-info']}>
-            <p><strong>ID:</strong> <span>{carro.id}</span></p>
-            <p><strong>Marca:</strong> <span>{carro.marca.nome}</span></p>
-            <p><strong>Modelo:</strong> <span>{carro.modelo}</span></p>
-            <p><strong>Placa:</strong> <span>{carro.placa}</span></p>
+            <div className={styles['car-info']}>
+              <p><strong>ID:</strong> <span>{carro.id}</span></p>
+              <p><strong>Marca:</strong> <span>{carro.marca.nome}</span></p>
+              <p><strong>Modelo:</strong> <span>{carro.modelo}</span></p>
+              <p><strong>Ano:</strong> <span>{carro.ano}</span></p>
+              <p><strong>Placa:</strong> <span>{carro.placa}</span></p>
+            </div>
+            <div>
+              <button className={styles['btn-list']} onClick={() => handleEditClick(carro)}>
+                <EditIcon />
+              </button>
+              <button >
+                <TrashIcon onClick={() => deleteCarros(carro.id)} />
+              </button>
+            </div>
           </div>
-          <div>
-            <button className={styles['btn-list']} onClick={() => handleEditClick(carro)}>
-              <EditIcon />
-            </button>
-            <button >
-              <TrashIcon onClick={() => deleteCarros(carro.id)}/>
-            </button>
-          </div>
-        </div>
         ))}
       </div>
     );
@@ -221,22 +272,33 @@ function HomeCarros() {
       </header>
       <header className={styles['search-header']}>
         <div className={`${styles.container} ${styles['header-content']}`}>
-        <div className={styles['search-bar']}>
-              <SearchIcon className={styles['search-icon']} />
-              <input
-                type="text"
-                className={styles['search-input']}
-                placeholder="Buscar por ID do veículo..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
+          <div className={styles['search-bar']}>
+            <SearchIcon className={styles['search-icon']} />
+            <input
+              type="text"
+              className={styles['search-input']}
+              placeholder="Buscar por ID do veículo..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
           </div>
           <div className={styles['header-actions']}>
-          <button type="submit" className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}>
-               Buscar
+            <button
+              type="button" 
+              className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}
+              onClick={handleSearchSubmit} 
+            >
+              Buscar
+            </button>
+            <button
+              type="button" 
+              className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}
+              onClick={() => getCarros()}
+            >
+              Limpar
             </button>
             <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleOpenModalCreate}>
-            <AddIcon /> Novo Veículo
+              <AddIcon /> Novo Veículo
             </button>
           </div>
         </div>
@@ -249,9 +311,9 @@ function HomeCarros() {
         {renderContent()}
       </main>
 
-      {/* MODAL DE NOVO VEÍCULO (Ajuste o conteúdo do seu modal aqui) */}
+      {/* MODAL DE NOVO VEÍCULO */}
       {isModalCreateOpen && (
-         <div className={styles["modal-overlay"]} onClick={handleCloseModalCreate}>
+        <div className={styles["modal-overlay"]} onClick={handleCloseModalCreate}>
           <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
             <div className={styles["modal-header"]}>
               <h2>Novo Veículo</h2>
@@ -260,23 +322,23 @@ function HomeCarros() {
               </button>
             </div>
             <p className={styles["modal-subtitle"]}>Preencha os dados do novo veículo</p>
-            <form className={styles["modal-form"]} >
+            <form className={styles["modal-form"]} onSubmit={handleFormCreateSubmit}>
               <div className={styles['form-row']}>
-                  <div className={styles['form-group']}>
-                      <label htmlFor="marca" className={styles['form-label']}>Marca</label>
-                      <input type="text" id="marca" name="marca" placeholder="Id da Marca" ref={inputMarca} required className={styles['form-input']} />
-                  </div>
-                   <div className={styles['form-group']}>
-                      <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
-                      <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" ref={inputModelo} required className={styles['form-input']} />
-                  </div>
+                <div className={styles['form-group']}>
+                  <label htmlFor="marca" className={styles['form-label']}>Marca</label>
+                  <input type="text" id="marca" name="marca" placeholder="Id da Marca" ref={inputMarca} required className={styles['form-input']} />
+                </div>
+                <div className={styles['form-group']}>
+                  <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
+                  <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" ref={inputModelo} required className={styles['form-input']} />
+                </div>
               </div>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
                   <label htmlFor="ano" className={styles['form-label']}>Ano</label>
                   <input type="number" id="ano" name="ano" placeholder="2025" ref={inputAno} required className={styles['form-input']} />
                 </div>
-                 <div className={styles['form-group']}>
+                <div className={styles['form-group']}>
                   <label htmlFor="placa" className={styles['form-label']}>Placa</label>
                   <input type="text" id="placa" name="placa" placeholder="ABC-1234" ref={inputPlaca} required className={styles['form-input']} />
                 </div>
@@ -286,7 +348,7 @@ function HomeCarros() {
                 <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalCreate} >
                   Cancelar
                 </button>
-                <button type="submit" onClick={createCarros} className={`${styles.btn} ${styles['btn-primary']}`}>
+                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
                   Adicionar
                 </button>
               </div>
@@ -295,9 +357,9 @@ function HomeCarros() {
         </div>
       )}
 
-      {/* MODAL DE ATUALIZAR VEÍCULO (Ajuste o conteúdo do seu modal aqui) */}
+      {/* MODAL DE ATUALIZAR VEÍCULO */}
       {isModalUpdateOpen && (
-         <div className={styles["modal-overlay"]} onClick={handleCloseModalUpdate}>
+        <div className={styles["modal-overlay"]} onClick={handleCloseModalUpdate}>
           <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
             <div className={styles["modal-header"]}>
               <h2>Atualizar Veículo</h2>
@@ -306,23 +368,23 @@ function HomeCarros() {
               </button>
             </div>
             <p className={styles["modal-subtitle"]}>Atualize os dados do veículo</p>
-            <form className={styles["modal-form"]} onSubmit={handleFormSubmit} >
+            <form className={styles["modal-form"]} onSubmit={handleFormUpdateSubmit} >
               <div className={styles['form-row']}>
-                  <div className={styles['form-group']}>
-                      <label htmlFor="marca" className={styles['form-label']}>Marca</label>
-                      <input type="text" id="marca" name="marca" placeholder="Id da Marca" value={formData.marca} onChange={handleFormChange} className={styles['form-input']} />
-                  </div>
-                   <div className={styles['form-group']}>
-                      <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
-                      <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" value={formData.modelo} onChange={handleFormChange} className={styles['form-input']} />
-                  </div>
+                <div className={styles['form-group']}>
+                  <label htmlFor="marca" className={styles['form-label']}>Marca</label>
+                  <input type="text" id="marca" name="marca" placeholder="Id da Marca" value={formData.marca} onChange={handleFormChange} className={styles['form-input']} />
+                </div>
+                <div className={styles['form-group']}>
+                  <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
+                  <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" value={formData.modelo} onChange={handleFormChange} className={styles['form-input']} />
+                </div>
               </div>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
                   <label htmlFor="ano" className={styles['form-label']}>Ano</label>
                   <input type="number" id="ano" name="ano" placeholder="2025" value={formData.ano} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
-                 <div className={styles['form-group']}>
+                <div className={styles['form-group']}>
                   <label htmlFor="placa" className={styles['form-label']}>Placa</label>
                   <input type="text" id="placa" name="placa" placeholder="ABC1234" value={formData.placa} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
@@ -334,7 +396,7 @@ function HomeCarros() {
                 </button>
                 <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
                   Atualizar
-                </button>
+                </button> 
               </div>
             </form>
           </div>
