@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './style.module.css';
 import api from '../../services/api';
 
-// --- Ícones ---
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -14,198 +13,153 @@ import TrashIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/EditRounded';
 
 
-// --- Componente Principal ---
 function HomeMarcas() {
   const [marcas, setMarcas] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalCreateOpen, setIsModalCreateOpen] = useState(false); // Para o modal
+  const [isModalCreateOpen, setIsModalCreateOpen] = useState(false);
   const [isModalUpdateOpen, setIsModalUpdateOpen] = useState(false);
-  const [editingMarca, seteditingMarca] = useState(null);
+  const [editingMarca, setEditingMarca] = useState(null);
+  const [modalError, setModalError] = useState(null);
 
-  const [formData, setFormData] = useState({
-    nome: '',
-  });
+  const [formData, setFormData] = useState({ nome: '' });
   const navigate = useNavigate();
 
-  const inputNome = useRef()
-  const inputCarros = useRef()
-  
+  const inputNome = useRef();
 
   async function getMarcas() {
-    const marcasApi = await api.get('/marcas')
-
-    setMarcas(marcasApi.data.data)
+    const marcasApi = await api.get('/marcas');
+    setMarcas(marcasApi.data.data);
   }
 
-
-
   async function deleteMarcas(id) {
-    await api.delete(`/marcas/${id}`)
-
-    getMarcas()
+    try {
+      await api.delete(`/marcas/${id}`);
+      getMarcas();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Não foi possível excluir a marca.';
+      setError(msg);
+    }
   }
 
   useEffect(() => {
     const fetchMarcas = async () => {
       setIsLoading(true);
       setError(null);
-      console.log("Buscando todas as marcas...");
-      await new Promise(resolve => setTimeout(resolve, 500)); // Seu delay
-
       try {
         await getMarcas();
-      } catch (e) {
-        console.error("Falha ao buscar marcas:", e);
-        setError("Não foi possível carregar as marcas.");
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Não foi possível carregar as marcas.';
+        setError(msg);
       } finally {
         setIsLoading(false);
       }
     };
     fetchMarcas();
-  }, []); // O array vazio está correto, para rodar só uma vez.
+  }, []);
 
   const handleSearchChange = (event) => setSearchTerm(event.target.value);
 
   const handleSearchSubmit = async (event) => {
-    // Previne o comportamento padrão do formulário (recarregar a página)
     event.preventDefault();
 
-    // Se a barra de busca estiver vazia, recarrega todos os marcas
     if (!searchTerm.trim()) {
-      console.log("Busca vazia, recarregando todos os Marcas...");
       await getMarcas();
       return;
     }
 
-    // Inicia o estado de carregamento
     setIsLoading(true);
     setError(null);
-    console.log(`Buscando marca com ID: ${searchTerm}`);
 
     try {
       const response = await api.get(`/marcas/${searchTerm}`);
 
-      console.log("Resposta da API (busca por ID):", response);
-
-      if (response.data && response.data.data) {
-        setMarcas([response.data.data]); // Coloca o marca encontrado (em um array) no estado
+      if (response.data?.data) {
+        setMarcas([response.data.data]);
       } else {
         setMarcas([]);
-        setError("Marca não encontrada para o ID especificado.");
+        setError('Marca não encontrada para o ID especificado.');
       }
-
-    } catch (e) {
-      console.error("Falha ao buscar marca por ID:", e);
-      setMarcas([]); // Limpa a lista de marcas
-      setError("Marca não encontrada ou falha na busca.");
+    } catch (err) {
+      setMarcas([]);
+      const msg = err.response?.data?.message || 'Marca não encontrada ou falha na busca.';
+      setError(msg);
     } finally {
-      setIsLoading(false); // Para o 'loading' em qualquer cenário (sucesso ou erro)
+      setIsLoading(false);
     }
   };
 
   const handleEditClick = (marcaParaEditar) => {
-    console.log("marca recebido para editar:", marcaParaEditar);
-    seteditingMarca(marcaParaEditar);
-
-
-    setFormData({
-      marca: marcaParaEditar.nome || ''
-    });
-
+    setEditingMarca(marcaParaEditar);
+    setFormData({ nome: marcaParaEditar.nome || '' });
     setIsModalUpdateOpen(true);
   };
 
   const handleFormChange = (event) => {
     const { name, value } = event.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value,
-    }));
+    setFormData(prevData => ({ ...prevData, [name]: value }));
   };
 
   const handleFormUpdateSubmit = async (event) => {
     event.preventDefault();
 
-    // Verifica se estamos realmente no modo de edição
     if (!editingMarca) {
-      console.error("Erro: Tentativa de submeter formulário sem um marca em edição.");
-      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
+      setModalError('Erro interno: nenhuma marca selecionada para edição.');
       return;
     }
 
-    console.log(`Atualizando marca com ID: ${editingMarca.id}`);
-    console.log("Novos dados:", formData);
-
+    setModalError(null);
     try {
       await api.patch(`/marcas/${editingMarca.id}`, formData);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simula API
-      console.log("Marca atualizada com sucesso!");
-
-      getMarcas();
+      await getMarcas();
       handleCloseModalUpdate();
     } catch (err) {
-      console.error("Erro ao atualizar marca:", err);
-      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
-
+      const msg = err.response?.data?.message || 'Não foi possível atualizar a marca.';
+      setModalError(msg);
     }
   };
 
   async function handleFormCreateSubmit(event) {
     event.preventDefault();
+    setModalError(null);
 
     const nomeDigitado = inputNome.current.value.trim().toUpperCase();
 
     try {
-      await api.post("/marcas", {
-        nome: nomeDigitado,
-      });
-
-      await getMarcas(); // Recarrega a lista do banco
-
-      // Limpa e fecha o modal
-      inputNome.current.value = "";
+      await api.post('/marcas', { nome: nomeDigitado });
+      await getMarcas();
+      inputNome.current.value = '';
       handleCloseModalCreate();
-
     } catch (err) {
-
-      console.log("!!! ERRO AO CRIAR marca (DEBUG) !!!");
-
-      // 'err.response' é o mais importante se for um erro de API (4xx, 5xx)
-      if (err.response) {
-        console.log("Dados do Erro (err.response):", err.response);
-        console.log("Status Code:", err.response.status);
-        console.log("Mensagem de Erro:", err.response.data);
-      } else {
-        // Se 'err.response' não existir, é outro tipo de erro (ex: rede)
-        console.log("Erro completo (sem err.response):", err);
-      }
-
-      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
-
+      const msg = err.response?.data?.message || 'Não foi possível criar a marca.';
+      setModalError(msg);
     }
-
   }
 
+  const handleOpenModalCreate = () => {
+    setModalError(null);
+    setIsModalCreateOpen(true);
+  };
+  const handleCloseModalCreate = () => {
+    setModalError(null);
+    setIsModalCreateOpen(false);
+  };
 
-
-  const handleOpenModalCreate = () => setIsModalCreateOpen(true); // Abre o modal
-  const handleCloseModalCreate = () => setIsModalCreateOpen(false); // Fecha o modal
-
-  const handleOpenModalUpdate = () => setIsModalUpdateOpen(true); // Abre o modal
   const handleCloseModalUpdate = () => {
+    setModalError(null);
     setIsModalUpdateOpen(false);
-    seteditingMarca(null);
-    setFormData({ marca: '', modelo: '', ano: '', placa: '' });
-  }
+    setEditingMarca(null);
+    setFormData({ nome: '' });
+  };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
     navigate('/');
   };
-  const handleNavigateToCarros = () => {
-    navigate('/carros');
-  };
+
+  const handleNavigateToCarros = () => navigate('/carros');
 
   const renderContent = () => {
     if (isLoading) return <p className={styles['status-message']}>Carregando Marcas...</p>;
@@ -223,11 +177,11 @@ function HomeMarcas() {
               <p><strong>Carros:</strong> <span>{(marca.carros || []).map(carro => carro.placa).join(', ')}</span></p>
             </div>
             <div>
-              <button className={styles['btn-list']} onClick={() => handleEditClick(marca)}>
+              <button className={styles['btn-list']} aria-label="Editar marca" onClick={() => handleEditClick(marca)}>
                 <EditIcon />
               </button>
-              <button >
-                <TrashIcon onClick={() => deleteMarcas(marca.id)} />
+              <button aria-label="Excluir marca" onClick={() => deleteMarcas(marca.id)}>
+                <TrashIcon />
               </button>
             </div>
           </div>
@@ -238,7 +192,6 @@ function HomeMarcas() {
 
   return (
     <div className={styles['page-container']}>
-      {/* CABEÇALHO */}
       <header className={styles['app-header']}>
         <div className={`${styles.container} ${styles['header-content']}`}>
           <div className={styles['logo-title']}>
@@ -246,10 +199,10 @@ function HomeMarcas() {
             <h1>Minhas Marcas</h1>
           </div>
           <div className={styles['header-actions']}>
-            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleNavigateToCarros}> {/* Classe alterada */}
+            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleNavigateToCarros}>
               <ListAltIcon /> Listar Carros
             </button>
-            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleLogout}> {/* Classe alterada */}
+            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleLogout}>
               <LogoutIcon /> Sair
             </button>
           </div>
@@ -261,6 +214,7 @@ function HomeMarcas() {
             <SearchIcon className={styles['search-icon']} />
             <input
               type="text"
+              aria-label="Buscar por ID da Marca"
               className={styles['search-input']}
               placeholder="Buscar por ID da Marca..."
               value={searchTerm}
@@ -269,16 +223,16 @@ function HomeMarcas() {
           </div>
           <div className={styles['header-actions']}>
             <button
-              type="button" 
+              type="button"
               className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}
-              onClick={handleSearchSubmit} 
+              onClick={handleSearchSubmit}
             >
               Buscar
             </button>
             <button
-              type="button" 
+              type="button"
               className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}
-              onClick={() => getMarcas()}
+              onClick={() => { setSearchTerm(''); getMarcas(); }}
             >
               Limpar
             </button>
@@ -289,33 +243,41 @@ function HomeMarcas() {
         </div>
       </header>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <main className={`${styles.container} ${styles['main-content']}`}>
-
-        {/* LISTA DE MARCAS OU ESTADO VAZIO */}
         {renderContent()}
       </main>
 
       {/* MODAL DE NOVA MARCA */}
       {isModalCreateOpen && (
-        <div className={styles["modal-overlay"]} onClick={handleCloseModalCreate}>
-          <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
-            <div className={styles["modal-header"]}>
-              <h2>Nova Marca</h2>
-              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModalCreate}>
+        <div className={styles['modal-overlay']}>
+          <button
+            type="button"
+            className={styles['modal-backdrop']}
+            aria-label="Fechar modal"
+            onClick={handleCloseModalCreate}
+          />
+          <dialog
+            className={styles['modal-content']}
+            aria-labelledby="modal-create-marca-title"
+            open
+          >
+            <div className={styles['modal-header']}>
+              <h2 id="modal-create-marca-title">Nova Marca</h2>
+              <button className={`${styles.btn} ${styles['btn-icon']}`} aria-label="Fechar modal" onClick={handleCloseModalCreate}>
                 <CloseIcon />
               </button>
             </div>
-            <p className={styles["modal-subtitle"]}>Preencha os dados da nova Marca</p>
-            <form className={styles["modal-form"]} onSubmit={handleFormCreateSubmit}>
+            <p className={styles['modal-subtitle']}>Preencha os dados da nova Marca</p>
+            {modalError && <p className={`${styles['status-message']} ${styles['error-message']}`}>{modalError}</p>}
+            <form className={styles['modal-form']} onSubmit={handleFormCreateSubmit}>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
-                  <label htmlFor="marca" className={styles['form-label']}>Nome</label>
-                  <input type="text" id="nome" name="nome" placeholder="Ex: Fiat" ref={inputNome} required className={styles['form-input']} />
+                  <label htmlFor="nome-create" className={styles['form-label']}>Nome</label>
+                  <input type="text" id="nome-create" name="nome" placeholder="Ex: Fiat" ref={inputNome} required className={styles['form-input']} />
                 </div>
               </div>
-              <div className={styles["modal-actions"]}>
-                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalCreate} >
+              <div className={styles['modal-actions']}>
+                <button type="button" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalCreate}>
                   Cancelar
                 </button>
                 <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
@@ -323,41 +285,51 @@ function HomeMarcas() {
                 </button>
               </div>
             </form>
-          </div>
+          </dialog>
         </div>
       )}
 
-      {/* MODAL DE ATUALIZAR Marca */}
+      {/* MODAL DE ATUALIZAR MARCA */}
       {isModalUpdateOpen && (
-        <div className={styles["modal-overlay"]} onClick={handleCloseModalUpdate}>
-          <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
-            <div className={styles["modal-header"]}>
-              <h2>Atualizar Marca</h2>
-              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModalUpdate}>
+        <div className={styles['modal-overlay']}>
+          <button
+            type="button"
+            className={styles['modal-backdrop']}
+            aria-label="Fechar modal"
+            onClick={handleCloseModalUpdate}
+          />
+          <dialog
+            className={styles['modal-content']}
+            aria-labelledby="modal-update-marca-title"
+            open
+          >
+            <div className={styles['modal-header']}>
+              <h2 id="modal-update-marca-title">Atualizar Marca</h2>
+              <button className={`${styles.btn} ${styles['btn-icon']}`} aria-label="Fechar modal" onClick={handleCloseModalUpdate}>
                 <CloseIcon />
               </button>
             </div>
-            <p className={styles["modal-subtitle"]}>Atualize os dados da Marca</p>
-            <form className={styles["modal-form"]} onSubmit={handleFormUpdateSubmit} >
+            <p className={styles['modal-subtitle']}>Atualize os dados da Marca</p>
+            {modalError && <p className={`${styles['status-message']} ${styles['error-message']}`}>{modalError}</p>}
+            <form className={styles['modal-form']} onSubmit={handleFormUpdateSubmit}>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
-                  <label htmlFor="marca" className={styles['form-label']}>Marca</label>
-                  <input type="text" id="nome" name="nome" placeholder="Ex: Fiat" value={formData.nome} onChange={handleFormChange} className={styles['form-input']} />
+                  <label htmlFor="nome-update" className={styles['form-label']}>Nome</label>
+                  <input type="text" id="nome-update" name="nome" placeholder="Ex: Fiat" value={formData.nome} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
               </div>
-              <div className={styles["modal-actions"]}>
-                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalUpdate} >
+              <div className={styles['modal-actions']}>
+                <button type="button" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalUpdate}>
                   Cancelar
                 </button>
                 <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
                   Atualizar
-                </button> 
+                </button>
               </div>
             </form>
-          </div>
+          </dialog>
         </div>
       )}
-
     </div>
   );
 }
