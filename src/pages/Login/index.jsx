@@ -22,8 +22,8 @@ function Login() {
           localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
           navigate('/carros');
         } catch (err) {
-          console.error(err);
-          setErro('Email ou senha incorretos');
+          const msg = err.response?.status === 401 ? 'Email ou senha incorretos' : 'Não foi possível fazer login. Tente novamente.';
+          setErro(msg);
         }
       }
  

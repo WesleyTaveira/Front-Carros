@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './style.module.css';
 import api from '../../services/api';
 
-// --- Ícones ---
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -14,15 +13,15 @@ import TrashIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/EditRounded';
 
 
-// --- Componente Principal ---
 function HomeCarros() {
   const [carros, setCarros] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalCreateOpen, setIsModalCreateOpen] = useState(false); // Para o modal
+  const [isModalCreateOpen, setIsModalCreateOpen] = useState(false);
   const [isModalUpdateOpen, setIsModalUpdateOpen] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
+  const [modalError, setModalError] = useState(null);
 
   const [formData, setFormData] = useState({
     marca: '',
@@ -32,193 +31,158 @@ function HomeCarros() {
   });
   const navigate = useNavigate();
 
-  const inputPlaca = useRef()
-  const inputAno = useRef()
-  const inputModelo = useRef()
-  const inputMarca = useRef()
+  const inputPlaca = useRef();
+  const inputAno = useRef();
+  const inputModelo = useRef();
+  const inputMarca = useRef();
 
   async function getCarros() {
-    const carrosApi = await api.get('/carros')
-
-    setCarros(carrosApi.data.data)
+    const carrosApi = await api.get('/carros');
+    setCarros(carrosApi.data.data);
   }
 
-
-
   async function deleteCarros(id) {
-    await api.delete(`/carros/${id}`)
-
-    getCarros()
+    try {
+      await api.delete(`/carros/${id}`);
+      getCarros();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Não foi possível excluir o veículo.';
+      setError(msg);
+    }
   }
 
   useEffect(() => {
     const fetchCarros = async () => {
       setIsLoading(true);
       setError(null);
-      console.log("Buscando todos os carros...");
-      await new Promise(resolve => setTimeout(resolve, 500)); // Seu delay
-
       try {
         await getCarros();
-      } catch (e) {
-        console.error("Falha ao buscar carros:", e);
-        setError("Não foi possível carregar os veículos.");
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Não foi possível carregar os veículos.';
+        setError(msg);
       } finally {
         setIsLoading(false);
       }
     };
     fetchCarros();
-  }, []); // O array vazio está correto, para rodar só uma vez.
+  }, []);
 
   const handleSearchChange = (event) => setSearchTerm(event.target.value);
 
   const handleSearchSubmit = async (event) => {
-    // Previne o comportamento padrão do formulário (recarregar a página)
     event.preventDefault();
 
-    // Se a barra de busca estiver vazia, recarrega todos os carros
     if (!searchTerm.trim()) {
-      console.log("Busca vazia, recarregando todos os veículos...");
       await getCarros();
       return;
     }
 
-    // Inicia o estado de carregamento
     setIsLoading(true);
     setError(null);
-    console.log(`Buscando veículo com ID: ${searchTerm}`);
 
     try {
       const response = await api.get(`/carros/${searchTerm}`);
 
-      console.log("Resposta da API (busca por ID):", response);
-
-      if (response.data && response.data.data) {
-        setCarros([response.data.data]); // Coloca o carro encontrado (em um array) no estado
+      if (response.data?.data) {
+        setCarros([response.data.data]);
       } else {
         setCarros([]);
-        setError("Veículo não encontrado para o ID especificado.");
+        setError('Veículo não encontrado para o ID especificado.');
       }
-
-    } catch (e) {
-      console.error("Falha ao buscar veículo por ID:", e);
-      setCarros([]); // Limpa a lista de carros
-      setError("Veículo não encontrado ou falha na busca.");
+    } catch (err) {
+      setCarros([]);
+      const msg = err.response?.data?.message || 'Veículo não encontrado ou falha na busca.';
+      setError(msg);
     } finally {
-      setIsLoading(false); // Para o 'loading' em qualquer cenário (sucesso ou erro)
+      setIsLoading(false);
     }
   };
 
   const handleEditClick = (carroParaEditar) => {
-    console.log("Carro recebido para editar:", carroParaEditar);
     setEditingCar(carroParaEditar);
-
-
     setFormData({
       marca: carroParaEditar.marca.id || '',
       modelo: carroParaEditar.modelo || '',
       ano: carroParaEditar.ano || '',
       placa: carroParaEditar.placa || '',
     });
-
     setIsModalUpdateOpen(true);
   };
 
   const handleFormChange = (event) => {
     const { name, value } = event.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value,
-    }));
+    setFormData(prevData => ({ ...prevData, [name]: value }));
   };
 
   const handleFormUpdateSubmit = async (event) => {
     event.preventDefault();
 
-    // Verifica se estamos realmente no modo de edição
     if (!editingCar) {
-      console.error("Erro: Tentativa de submeter formulário sem um carro em edição.");
-      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
+      setModalError('Erro interno: nenhum veículo selecionado para edição.');
       return;
     }
 
-    console.log(`Atualizando carro com ID: ${editingCar.id}`);
-    console.log("Novos dados:", formData);
-
+    setModalError(null);
     try {
       await api.patch(`/carros/${editingCar.id}`, formData);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simula API
-      console.log("Carro atualizado com sucesso!");
-
-      getCarros();
+      await getCarros();
       handleCloseModalUpdate();
     } catch (err) {
-      console.error("Erro ao atualizar carro:", err);
-      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
-
+      const msg = err.response?.data?.message || 'Não foi possível atualizar o veículo.';
+      setModalError(msg);
     }
   };
 
   async function handleFormCreateSubmit(event) {
     event.preventDefault();
+    setModalError(null);
 
     const placaDigitada = inputPlaca.current.value.trim().toUpperCase();
 
     try {
-      await api.post("/carros", {
+      await api.post('/carros', {
         placa: placaDigitada,
         ano: inputAno.current.value,
         modelo: inputModelo.current.value,
-        marca: inputMarca.current.value
+        marca: inputMarca.current.value,
       });
 
-      await getCarros(); // Recarrega a lista do banco
+      await getCarros();
 
-      // Limpa e fecha o modal
-      inputPlaca.current.value = "";
-      inputAno.current.value = "";
-      inputModelo.current.value = "";
-      inputMarca.current.value = "";
+      inputPlaca.current.value = '';
+      inputAno.current.value = '';
+      inputModelo.current.value = '';
+      inputMarca.current.value = '';
       handleCloseModalCreate();
-
     } catch (err) {
-
-      console.log("!!! ERRO AO CRIAR CARRO (DEBUG) !!!");
-
-      // 'err.response' é o mais importante se for um erro de API (4xx, 5xx)
-      if (err.response) {
-        console.log("Dados do Erro (err.response):", err.response);
-        console.log("Status Code:", err.response.status);
-        console.log("Mensagem de Erro:", err.response.data);
-      } else {
-        // Se 'err.response' não existir, é outro tipo de erro (ex: rede)
-        console.log("Erro completo (sem err.response):", err);
-      }
-
-      alert("Ocorreu um erro. Verifique o console do navegador para mais detalhes.");
-
+      const msg = err.response?.data?.message || 'Não foi possível criar o veículo.';
+      setModalError(msg);
     }
-
   }
 
+  const handleOpenModalCreate = () => {
+    setModalError(null);
+    setIsModalCreateOpen(true);
+  };
+  const handleCloseModalCreate = () => {
+    setModalError(null);
+    setIsModalCreateOpen(false);
+  };
 
-
-  const handleOpenModalCreate = () => setIsModalCreateOpen(true); // Abre o modal
-  const handleCloseModalCreate = () => setIsModalCreateOpen(false); // Fecha o modal
-
-  const handleOpenModalUpdate = () => setIsModalUpdateOpen(true); // Abre o modal
   const handleCloseModalUpdate = () => {
+    setModalError(null);
     setIsModalUpdateOpen(false);
     setEditingCar(null);
     setFormData({ marca: '', modelo: '', ano: '', placa: '' });
-  }
+  };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
     navigate('/');
   };
-  const handleNavigateToMarcas = () => {
-    navigate('/carros/marcas');
-  };
+
+  const handleNavigateToMarcas = () => navigate('/carros/marcas');
 
   const renderContent = () => {
     if (isLoading) return <p className={styles['status-message']}>Carregando veículos...</p>;
@@ -238,11 +202,11 @@ function HomeCarros() {
               <p><strong>Placa:</strong> <span>{carro.placa}</span></p>
             </div>
             <div>
-              <button className={styles['btn-list']} onClick={() => handleEditClick(carro)}>
+              <button className={styles['btn-list']} aria-label="Editar veículo" onClick={() => handleEditClick(carro)}>
                 <EditIcon />
               </button>
-              <button >
-                <TrashIcon onClick={() => deleteCarros(carro.id)} />
+              <button aria-label="Excluir veículo" onClick={() => deleteCarros(carro.id)}>
+                <TrashIcon />
               </button>
             </div>
           </div>
@@ -253,7 +217,6 @@ function HomeCarros() {
 
   return (
     <div className={styles['page-container']}>
-      {/* CABEÇALHO */}
       <header className={styles['app-header']}>
         <div className={`${styles.container} ${styles['header-content']}`}>
           <div className={styles['logo-title']}>
@@ -261,10 +224,10 @@ function HomeCarros() {
             <h1>Meus Veículos</h1>
           </div>
           <div className={styles['header-actions']}>
-            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleNavigateToMarcas}> {/* Classe alterada */}
+            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleNavigateToMarcas}>
               <ListAltIcon /> Listar Marcas
             </button>
-            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleLogout}> {/* Classe alterada */}
+            <button className={`${styles.btn} ${styles['btn-header-action']}`} onClick={handleLogout}>
               <LogoutIcon /> Sair
             </button>
           </div>
@@ -276,6 +239,7 @@ function HomeCarros() {
             <SearchIcon className={styles['search-icon']} />
             <input
               type="text"
+              aria-label="Buscar por ID do veículo"
               className={styles['search-input']}
               placeholder="Buscar por ID do veículo..."
               value={searchTerm}
@@ -284,16 +248,16 @@ function HomeCarros() {
           </div>
           <div className={styles['header-actions']}>
             <button
-              type="button" 
+              type="button"
               className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}
-              onClick={handleSearchSubmit} 
+              onClick={handleSearchSubmit}
             >
               Buscar
             </button>
             <button
-              type="button" 
+              type="button"
               className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-search-submit']}`}
-              onClick={() => getCarros()}
+              onClick={() => { setSearchTerm(''); getCarros(); }}
             >
               Limpar
             </button>
@@ -304,48 +268,55 @@ function HomeCarros() {
         </div>
       </header>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <main className={`${styles.container} ${styles['main-content']}`}>
-
-        {/* LISTA DE CARROS OU ESTADO VAZIO */}
         {renderContent()}
       </main>
 
       {/* MODAL DE NOVO VEÍCULO */}
       {isModalCreateOpen && (
-        <div className={styles["modal-overlay"]} onClick={handleCloseModalCreate}>
-          <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
-            <div className={styles["modal-header"]}>
-              <h2>Novo Veículo</h2>
-              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModalCreate}>
+        <div className={styles['modal-overlay']}>
+          <button
+            type="button"
+            className={styles['modal-backdrop']}
+            aria-label="Fechar modal"
+            onClick={handleCloseModalCreate}
+          />
+          <dialog
+            className={styles['modal-content']}
+            aria-labelledby="modal-create-carro-title"
+            open
+          >
+            <div className={styles['modal-header']}>
+              <h2 id="modal-create-carro-title">Novo Veículo</h2>
+              <button className={`${styles.btn} ${styles['btn-icon']}`} aria-label="Fechar modal" onClick={handleCloseModalCreate}>
                 <CloseIcon />
               </button>
             </div>
-            <p className={styles["modal-subtitle"]}>Preencha os dados do novo veículo</p>
-            <form className={styles["modal-form"]} onSubmit={handleFormCreateSubmit}>
+            <p className={styles['modal-subtitle']}>Preencha os dados do novo veículo</p>
+            {modalError && <p className={`${styles['status-message']} ${styles['error-message']}`}>{modalError}</p>}
+            <form className={styles['modal-form']} onSubmit={handleFormCreateSubmit}>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
-                  <label htmlFor="marca" className={styles['form-label']}>Marca</label>
-                  <input type="text" id="marca" name="marca" placeholder="Id da Marca" ref={inputMarca} required className={styles['form-input']} />
+                  <label htmlFor="marca-create" className={styles['form-label']}>Marca</label>
+                  <input type="text" id="marca-create" name="marca" placeholder="Id da Marca" ref={inputMarca} required className={styles['form-input']} />
                 </div>
                 <div className={styles['form-group']}>
-                  <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
-                  <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" ref={inputModelo} required className={styles['form-input']} />
+                  <label htmlFor="modelo-create" className={styles['form-label']}>Modelo</label>
+                  <input type="text" id="modelo-create" name="modelo" placeholder="Ex: Corolla" ref={inputModelo} required className={styles['form-input']} />
                 </div>
               </div>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
-                  <label htmlFor="ano" className={styles['form-label']}>Ano</label>
-                  <input type="number" id="ano" name="ano" placeholder="2025" ref={inputAno} required className={styles['form-input']} />
+                  <label htmlFor="ano-create" className={styles['form-label']}>Ano</label>
+                  <input type="number" id="ano-create" name="ano" placeholder="2025" ref={inputAno} required className={styles['form-input']} />
                 </div>
                 <div className={styles['form-group']}>
-                  <label htmlFor="placa" className={styles['form-label']}>Placa</label>
-                  <input type="text" id="placa" name="placa" placeholder="ABC-1234" ref={inputPlaca} required className={styles['form-input']} />
+                  <label htmlFor="placa-create" className={styles['form-label']}>Placa</label>
+                  <input type="text" id="placa-create" name="placa" placeholder="ABC-1234" ref={inputPlaca} required className={styles['form-input']} />
                 </div>
               </div>
-
-              <div className={styles["modal-actions"]}>
-                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalCreate} >
+              <div className={styles['modal-actions']}>
+                <button type="button" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalCreate}>
                   Cancelar
                 </button>
                 <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
@@ -353,56 +324,65 @@ function HomeCarros() {
                 </button>
               </div>
             </form>
-          </div>
+          </dialog>
         </div>
       )}
 
       {/* MODAL DE ATUALIZAR VEÍCULO */}
       {isModalUpdateOpen && (
-        <div className={styles["modal-overlay"]} onClick={handleCloseModalUpdate}>
-          <div className={styles["modal-content"]} onClick={(e) => e.stopPropagation()}>
-            <div className={styles["modal-header"]}>
-              <h2>Atualizar Veículo</h2>
-              <button className={`${styles.btn} ${styles['btn-icon']}`} onClick={handleCloseModalUpdate}>
+        <div className={styles['modal-overlay']}>
+          <button
+            type="button"
+            className={styles['modal-backdrop']}
+            aria-label="Fechar modal"
+            onClick={handleCloseModalUpdate}
+          />
+          <dialog
+            className={styles['modal-content']}
+            aria-labelledby="modal-update-carro-title"
+            open
+          >
+            <div className={styles['modal-header']}>
+              <h2 id="modal-update-carro-title">Atualizar Veículo</h2>
+              <button className={`${styles.btn} ${styles['btn-icon']}`} aria-label="Fechar modal" onClick={handleCloseModalUpdate}>
                 <CloseIcon />
               </button>
             </div>
-            <p className={styles["modal-subtitle"]}>Atualize os dados do veículo</p>
-            <form className={styles["modal-form"]} onSubmit={handleFormUpdateSubmit} >
+            <p className={styles['modal-subtitle']}>Atualize os dados do veículo</p>
+            {modalError && <p className={`${styles['status-message']} ${styles['error-message']}`}>{modalError}</p>}
+            <form className={styles['modal-form']} onSubmit={handleFormUpdateSubmit}>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
-                  <label htmlFor="marca" className={styles['form-label']}>Marca</label>
-                  <input type="text" id="marca" name="marca" placeholder="Id da Marca" value={formData.marca} onChange={handleFormChange} className={styles['form-input']} />
+                  <label htmlFor="marca-update" className={styles['form-label']}>Marca</label>
+                  <input type="text" id="marca-update" name="marca" placeholder="Id da Marca" value={formData.marca} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
                 <div className={styles['form-group']}>
-                  <label htmlFor="modelo" className={styles['form-label']}>Modelo</label>
-                  <input type="text" id="modelo" name="modelo" placeholder="Ex: Corolla" value={formData.modelo} onChange={handleFormChange} className={styles['form-input']} />
+                  <label htmlFor="modelo-update" className={styles['form-label']}>Modelo</label>
+                  <input type="text" id="modelo-update" name="modelo" placeholder="Ex: Corolla" value={formData.modelo} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
               </div>
               <div className={styles['form-row']}>
                 <div className={styles['form-group']}>
-                  <label htmlFor="ano" className={styles['form-label']}>Ano</label>
-                  <input type="number" id="ano" name="ano" placeholder="2025" value={formData.ano} onChange={handleFormChange} className={styles['form-input']} />
+                  <label htmlFor="ano-update" className={styles['form-label']}>Ano</label>
+                  <input type="number" id="ano-update" name="ano" placeholder="2025" value={formData.ano} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
                 <div className={styles['form-group']}>
-                  <label htmlFor="placa" className={styles['form-label']}>Placa</label>
-                  <input type="text" id="placa" name="placa" placeholder="ABC1234" value={formData.placa} onChange={handleFormChange} className={styles['form-input']} />
+                  <label htmlFor="placa-update" className={styles['form-label']}>Placa</label>
+                  <input type="text" id="placa-update" name="placa" placeholder="ABC1234" value={formData.placa} onChange={handleFormChange} className={styles['form-input']} />
                 </div>
               </div>
-
-              <div className={styles["modal-actions"]}>
-                <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalUpdate} >
+              <div className={styles['modal-actions']}>
+                <button type="button" className={`${styles.btn} ${styles['btn-primary']}`} onClick={handleCloseModalUpdate}>
                   Cancelar
                 </button>
                 <button type="submit" className={`${styles.btn} ${styles['btn-primary']}`}>
                   Atualizar
-                </button> 
+                </button>
               </div>
             </form>
-          </div>
+          </dialog>
         </div>
       )}
-
     </div>
   );
 }
